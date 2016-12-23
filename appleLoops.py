@@ -123,7 +123,7 @@ class AppleLoops():
         # For example: self.loop_locations['logic_pro']['2016'][0]
         # Returns: 'logicpro1023.plist'
         # Note - dropped support for anything prior to 2016 releases
-        self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/test/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
+        self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/master/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
         self.loop_feed_locations = readPlistFromString(self.feeds.read())
         self.feeds.close()
 
