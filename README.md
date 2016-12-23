@@ -20,6 +20,6 @@ The current version of Logic Pro X (10.2.4 as at 2016-11-23) has:
 The 'essential' content consists of 29 packages, the optional content consists of 557 packages.
 
 ## Usage
-- `git clone https://github.com/carlashley/appleLoops`
-- `./appleLoops.py --help` for usage
-- - Default usage of `./appleLoops.py` will download all GarageBand content (optional and mandatory)
+* `git clone https://github.com/carlashley/appleLoops`
+* `./appleLoops.py --help` for usage
+** Default usage of `./appleLoops.py` will download all GarageBand content (optional and mandatory)
