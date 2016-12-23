@@ -40,7 +40,7 @@ The 'essential' content consists of 29 packages, the optional content consists o
 Example for GarageBand content:
 `/tmp/appleLoops/garageband/2016/mandatory`
 
-Download path can be overriden with the `-d <folder>` or `--destination <folder>` option. If the folder/s don't exist, they're created.
+Download path can be overriden with the `-d <folder>` or `--destination <folder>` option. If the folder doesn't exist, it gets created (make sure you have permission to create directories in the specified destination).
 
 Subfolder heirarchy remains the same.
 
