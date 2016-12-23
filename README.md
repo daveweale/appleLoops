@@ -33,6 +33,17 @@ The 'essential' content consists of 29 packages, the optional content consists o
 * `./appleLoops.py --dry-run --package-set garageband --optional-only` will do a dry run for all GarageBand optional content
 * `./appleLoops.py --package-set logicpro --mandatory-only` will download all essential Logic Pro X content
 
+### Package download location
+* Defaults to `/tmp/appleLoops` with subfolders for `garageband` and `logicpro`.
+* Mandatory/optional content gets saved into `YYYY/mandatory` or `YYYY/optional`
+
+Example for GarageBand content:
+`/tmp/appleLoops/garageband/2016/mandatory`
+
+Download path can be overriden with the `-d <folder>` or `--destination <folder>` option. If the folder/s don't exist, they're created.
+
+Subfolder heirarchy remains the same.
+
 # Copyright
 ```
 Licensed under the Apache License, Version 2.0 (the "License");
