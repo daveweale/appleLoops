@@ -5,13 +5,10 @@ Downloads the 'core' content that is downloaded by GarageBand, Logic Pro X, or M
 
 **You are responsible for being appropriately licsened for any/all content downloaded with this tool.**
 
-_Please note, that this release will only download content for the current versions of these apps, as at 2016-12-23._
-
-_There are no plans to support older versions of these apps._
-
 ## What this won't do
 * Install packages
 * Import packages into your package deployment system
+* Download content for older versions of GarageBand, Logic Pro X, and MainStage.
 
 ## Requirements
 macOS with the system standard `python`.
