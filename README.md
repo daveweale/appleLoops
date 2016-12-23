@@ -22,4 +22,4 @@ The 'essential' content consists of 29 packages, the optional content consists o
 ## Usage
 * `git clone https://github.com/carlashley/appleLoops`
 * `./appleLoops.py --help` for usage
-** Default usage of `./appleLoops.py` will download all GarageBand content (optional and mandatory)
+* `./appleLoops.py` will download all GarageBand content (optional and mandatory)
