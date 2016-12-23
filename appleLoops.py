@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Downloads required audio content for GarageBand and Logic Pro
+Downloads required audio loops for GarageBand and Logic Pro.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +36,17 @@ from Foundation import NSPropertyListMutableContainers
 from Foundation import NSPropertyListXMLFormat_v1_0  # NOQA
 # pylint: enable=E0611
 
+# Script information
+__author__ = 'Carl Windus'
+__copyright__ = 'Copyright 2016, Carl Windus'
+__credits__ = ['Greg Neagle', 'Matt Wilkie']
+__version__ = '1.0.0'
+__date__ = '2016-12-23'
+
+__license__ = 'Apache License, Version 2.0'
+__maintainer__ = 'Carl Windus'
+__status__ = 'Production'
+
 
 # Acknowledgements to Greg Neagle and `munki` for this section of code.
 class FoundationPlistException(Exception):
@@ -49,7 +60,7 @@ class NSPropertyListSerializationException(FoundationPlistException):
 
 
 def readPlistFromString(data):
-    '''Read a plist data from a string. Return the root object.'''
+    """Read a plist data from a string. Return the root object."""
     try:
         plistData = buffer(data)
     except TypeError, err:
@@ -69,9 +80,11 @@ def readPlistFromString(data):
 
 
 class AppleLoops():
+    """Class contains functions for parsing Apple's plist feeds for GarageBand
+    and Logic Pro, as well as downloading loops content."""
     def __init__(self, download_location=None, dry_run=True,
-                 mandatory_pkgs=False, package_set=None,
-                 package_year=None):
+                 package_set=None, package_year=None,
+                 mandatory_pkg=False, optional_pkg=False):
         if not download_location:
             self.download_location = os.path.join('/tmp', 'appleLoops')
         else:
@@ -80,14 +93,17 @@ class AppleLoops():
         # Default to dry run
         self.dry_run = dry_run
 
-        # Set mandatory packages or not, defaults to false
-        self.mandatory_packages = mandatory_pkgs
-
         # Set package set to download
         self.package_set = package_set
 
         # Set package year to download
         self.package_year = package_year
+
+        # Set mandatory package to option specified. Default is false.
+        self.mandatory_pkg = mandatory_pkg
+
+        # Set optional package to option specified. Default is false.
+        self.optional_pkg = optional_pkg
 
         # Base URL for loops
         # This URL needs to be re-assembled into the correct format of:
@@ -104,16 +120,17 @@ class AppleLoops():
         # For example: self.loop_locations['logic_pro']['2016'][0]
         # Returns: 'logicpro1023.plist'
         # Note - dropped support for anything prior to 2016 releases
-        self.logic_loop_locations = {
-            '2016': [
-                'logicpro1023.plist',
-            ],
-        }
-
-        self.garageband_loop_locations = {
-            '2016': [
-                'garageband1012.plist',
-            ],
+        self.loop_feed_locations = {
+            'garageband': {
+                '2016': [
+                    'garageband1012.plist',
+                ]
+            },
+            'logicpro': {
+                '2016': [
+                    'logicpro1023.plist',
+                ],
+            },
         }
 
         self.loop_years = ['2016']
@@ -131,14 +148,19 @@ class AppleLoops():
                                                     'pkg_size',
                                                     'pkg_year',
                                                     'pkg_loop_for'])
+
+        # Empty list to put all the content that we're going to work on into.
         self.master_list = []
 
     def build_url(self, loop_year, filename):
+        """Builds the URL for each plist feed"""
         seperator = '/'
         return seperator.join([self.base_url + loop_year, filename])
 
     def add_loop(self, package_name, package_url,
                  package_mandatory, package_size, package_year, loop_for):
+        """Add's the loop to the master list. A named tuple is used to make
+        referencing attributes of each loop easier."""
         loop = self.Loop(
             pkg_name=package_name,
             pkg_url=package_url,
@@ -152,6 +174,9 @@ class AppleLoops():
             self.master_list.append(loop)
 
     def process_plist(self, loop_year, plist):
+        """Processes the Apple plist feed. Makes use of readPlistFromString()
+        as python's native plistlib module doesn't read binary plists, which
+        Apple has used in past releases."""
         # Note - the package size specified in the plist feeds doesn't always
         # match the actual package size, so check header 'Content-Length' to
         # determine correct package size.
@@ -197,25 +222,38 @@ class AppleLoops():
                 size = data['Packages'][pkg]['DownloadSize']
 
             # Add to the loops master list
-            self.add_loop(name, url, mandatory, size, year, loop_for)
+            if self.mandatory_pkg and not self.optional_pkg:
+                if mandatory:
+                    self.add_loop(name, url, mandatory, size, year, loop_for)
+            elif self.optional_pkg and not self.mandatory_pkg:
+                if not mandatory:
+                    self.add_loop(name, url, mandatory, size, year, loop_for)
+            else:
+                pass
+
+            if not self.mandatory_pkg and not self.optional_pkg:
+                self.add_loop(name, url, mandatory, size, year, loop_for)
 
         # Tidy up the urllib2 request
         request.close()
 
-    def build_master_list(self, loops_for=None):
-        if 'logicpro' in loops_for:
-            self.process_plist('2016', 'logicpro1023.plist')
-        #    for year in self.logic_loop_locations:
-        #        for plist in self.logic_loop_locations[year]:
-        #            self.process_plist(year, plist)
-
-        if 'garageband' in loops_for:
-            self.process_plist('2016', 'garageband1012.plist')
-        #    for year in self.garageband_loop_locations:
-        #        for plist in self.garageband_loop_locations[year]:
-        #            self.process_plist(year, plist)
+    def build_master_list(self):
+        """This builds the master list of audio content so it (the master list)
+        can be processed in other functions. Yeah, there's some funky Big O
+        here."""
+        # Yo dawg, heard you like for loops, so I put for loops in your for
+        # loops
+        for pkg_set in self.package_set:
+            for year in self.package_year:
+                package_plist = self.loop_feed_locations[pkg_set][year]
+                for plist in package_plist:
+                    print 'Processing %s and saving to %s' % (
+                        plist, self.download_location
+                    )
+                    self.process_plist(year, plist)
 
     def convert_size(self, file_size, precision=2):
+        """Converts the package file size into a human readable number."""
         try:
             suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
             suffix_index = 0
@@ -228,6 +266,8 @@ class AppleLoops():
             raise e
 
     def progress_output(self, loop, percent, human_fs):
+        """Basic progress count that self updates while a
+        file is downloading."""
         try:
             stats = 'Downloading: %s' % (loop.pkg_name)
             progress = '[%0.2f%% of %s]' % (percent, human_fs)
@@ -237,6 +277,8 @@ class AppleLoops():
             raise e
 
     def make_storage_location(self, folder):
+        """Makes the storage location for the audio content if it doesn't exist.
+        Tries to expand paths and variables."""
         try:
             folder = os.path.expanduser(folder)
         except:
@@ -253,75 +295,110 @@ class AppleLoops():
             except Exception as e:
                 raise e
 
-    def download(self, loop):
-        local_directory = os.path.join(self.download_location,
-                                       loop.pkg_loop_for,
-                                       loop.pkg_year)
-        self.make_storage_location(local_directory)
-        if not self.dry_run:
-            # return 'Not a dry run'
-            try:
-                request = urllib2.urlopen(loop.pkg_url)
+    # Test if the file being downloaded exists
+    def file_exists(self, loop, local_file):
+        """Tests if the remote file already exists locally and it is the
+        correct file size. There is likely to be some rounding error here if
+        remote file sizes change, but it's unlikely, and shouldn't be a big
+        issue."""
+        if os.path.exists(local_file):
+            # Remote file size
+            remote_size = round(float(loop.pkg_size), 2)
 
-                # Human readable file size
-                loop_size = self.convert_size(float(loop.pkg_size))
-            except Exception as e:
-                raise e
+            # Local file size
+            local_size = os.path.getsize(local_file)
+            local_size = round(float(local_size), 2)
+
+            # Compare if local size matches remote size
+            if local_size == remote_size:
+                return True
             else:
-                # Open a local file to write into in binary format
-                local_file = open(os.path.join(local_directory, loop.pkg_name),
-                                  'wb')
-                bytes_so_far = 0
+                return False
 
-                # This bit does the download
-                while True:
-                    buffer = request.read(8192)
-                    if not buffer:
-                        print('')
-                        break
+    # Downloads the loop file
+    def download(self, loop):
+        """Downloads the loop, if the dry run option has been set, then it will
+        only output what it would download, along with the file size."""
+        # Only create the output directory if this isn't a dry run
+        if not self.dry_run:
+            local_directory = os.path.join(self.download_location,
+                                           loop.pkg_loop_for,
+                                           loop.pkg_year)
+            # Make the download directory
+            self.make_storage_location(local_directory)
 
-                    # Re-calculate downloaded bytes
-                    bytes_so_far += len(buffer)
+            local_file = os.path.join(local_directory, loop.pkg_name)
 
-                    # Write out download file to the loop_file opened
-                    local_file.write(buffer)
+        # Human readable file size
+        loop_size = self.convert_size(float(loop.pkg_size))
 
-                    # Calculate percentage
-                    percent = float(bytes_so_far) / int(loop.pkg_size)
-                    percent = round(percent*100, 2)
-
-                    # Output progress made
-                    self.progress_output(loop, percent, loop_size)
-            finally:
+        # Do the download if this isn't a dry run
+        if not self.dry_run:
+            # If the file doesn't already exist, or isn't a complete file,
+            # download it
+            if not self.file_exists(loop, local_file):
                 try:
-                    request.close()
-                except:
-                    pass
+                    request = urllib2.urlopen(loop.pkg_url)
+                except Exception as e:
+                    raise e
                 else:
-                    # Let a random sleep of 1-5 seconds happen between each
-                    # download
-                    pause = uniform(1, 5)
-                    sleep(pause)
+                    # Open a local file to write into in binary format
+                    local_file = open(local_file, 'wb')
+                    bytes_so_far = 0
+
+                    # This bit does the download
+                    while True:
+                        buffer = request.read(8192)
+                        if not buffer:
+                            print('')
+                            break
+
+                        # Re-calculate downloaded bytes
+                        bytes_so_far += len(buffer)
+
+                        # Write out download file to the loop_file opened
+                        local_file.write(buffer)
+
+                        # Calculate percentage
+                        percent = float(bytes_so_far) / int(loop.pkg_size)
+                        percent = round(percent*100, 2)
+
+                        # Output progress made
+                        self.progress_output(loop, percent, loop_size)
+                finally:
+                    try:
+                        request.close()
+                    except:
+                        pass
+                    else:
+                        # Let a random sleep of 1-5 seconds happen between each
+                        # download
+                        pause = uniform(1, 5)
+                        sleep(pause)
+            else:
+                print 'Skipped %s - file exists' % loop.pkg_name
 
         else:
-            print 'Dry run'
+            print '%s - %s' % (loop.pkg_name, loop_size)
 
     # This is the primary processor for the main function - only used for
     # command line based script usage
     def main_processor(self):
-        pkg_set = self.package_set
-
-        for pkg in pkg_set:
-            for loop in self.master_list:
-                if loop.year in self.package_year:
-                    self.download(loop)
+        """This is the main processor function, it should only be called in the
+        main() function - i.e. only for use by the command line."""
+        # Build master list
+        self.build_master_list()
+        # print self.master_list
+        for loop in self.master_list:
+                self.download(loop)
 
 
 def main():
     class SaneUsageFormat(argparse.HelpFormatter):
         """
-            for matt wilkie on SO
-            http://stackoverflow.com/questions/9642692/argparse-help-without-duplicate-allcaps/9643162#9643162
+        Makes the help output somewhat more sane.
+        Code used was from Matt Wilkie.
+        http://stackoverflow.com/questions/9642692/argparse-help-without-duplicate-allcaps/9643162#9643162
         """
         def _format_action_invocation(self, action):
             if not action.option_strings:
@@ -374,21 +451,30 @@ def main():
         required=False
     )
 
-    # Option for mandatory packages only
+    # Option for mandatory content only
     parser.add_argument(
         '-m', '--mandatory-only',
         action='store_true',
-        dest='mandatory_only',
-        help='Download mandatory packages only',
+        dest='mandatory',
+        help='Download mandatory content only',
+        required=False
+    )
+
+    # Option for optional content only
+    parser.add_argument(
+        '-o', '--optional-only',
+        action='store_true',
+        dest='optional',
+        help='Download optional content only',
         required=False
     )
 
     # Option for output directory
     parser.add_argument(
-        '-o', '--output',
+        '-d', '--destination',
         type=str,
         nargs=1,
-        dest='output',
+        dest='destination',
         metavar='<folder>',
         help='Download location for loops content',
         required=False
@@ -414,16 +500,10 @@ def main():
         pkg_set = ['garageband']
 
     # Set output directory
-    if args.output and len(args.output) is 1:
-        store_in = args.output[0]
+    if args.destination and len(args.destination) is 1:
+        store_in = args.destination[0]
     else:
         store_in = None
-
-    # Set mandatory packages option for when class is instantiated
-    if not args.mandatory_only:
-        mandatory = False
-    else:
-        mandatory = True
 
     # Set content year
     if not args.content_year:
@@ -434,12 +514,12 @@ def main():
     # Instantiate the class AppleLoops with options
     loops = AppleLoops(download_location=store_in,
                        dry_run=args.dry_run,
-                       mandatory_pkgs=mandatory,
                        package_set=pkg_set,
-                       package_year=year)
+                       package_year=year,
+                       mandatory_pkg=args.mandatory,
+                       optional_pkg=args.optional)
 
-    # loops.main_processor()
-    print args
+    loops.main_processor()
 
 if __name__ == '__main__':
     main()
