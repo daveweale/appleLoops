@@ -4,6 +4,7 @@
 Downloads the 'core' content that is downloaded by GarageBand or Logic Pro X on first run.
 
 _Please note, that this release will only download content for the current versions of GarageBand or Logic Pro X, as at 2016-12-23._
+
 _There are no plans to support older versions of these apps._
 
 ## What this won't do
