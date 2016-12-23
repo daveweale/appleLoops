@@ -105,6 +105,9 @@ class AppleLoops():
         # Set optional package to option specified. Default is false.
         self.optional_pkg = optional_pkg
 
+        # User-Agent string for this tool
+        self.user_agent = 'appleLoops/%s' % __version__
+
         # Base URL for loops
         # This URL needs to be re-assembled into the correct format of:
         # http://audiocontentdownload.apple.com/lp10_ms3_content_YYYY/filename.ext
@@ -181,7 +184,13 @@ class AppleLoops():
         # match the actual package size, so check header 'Content-Length' to
         # determine correct package size.
         plist_url = self.build_url(loop_year, plist)
-        request = urllib2.urlopen(plist_url)
+
+        # URL requests
+        request = urllib2.Request(plist_url)
+        request.add_unredirected_header('User-Agent', self.user_agent)
+        request = urllib2.urlopen(request)
+
+        # Process request data into dictionary
         data = readPlistFromString(request.read())
         loop_for = os.path.splitext(plist)[0]
 
@@ -214,10 +223,12 @@ class AppleLoops():
 
             # This step adds time to the processing of the plist
             try:
-                size_request = urllib2.urlopen(url)
-                size = size_request.info().getheader('Content-Length').strip()
+                request.urllib2.Request(url)
+                request.add_unredirected_header('User-Agent', self.user_agent)
+                request = urllib2.urlopen(request)
+                size = request.info().getheader('Content-Length').strip()
                 # Close out the urllib2 request
-                size_request.close()
+                request.close()
             except:
                 size = data['Packages'][pkg]['DownloadSize']
 
@@ -269,7 +280,7 @@ class AppleLoops():
         """Basic progress count that self updates while a
         file is downloading."""
         try:
-            stats = 'Downloading: %s' % (loop.pkg_name)
+            stats = 'Downloading: %s' % loop.pkg_name
             progress = '[%0.2f%% of %s]' % (percent, human_fs)
             sys.stdout.write("\r%s %s" % (stats, progress))
             sys.stdout.flush()
@@ -298,19 +309,26 @@ class AppleLoops():
     # Test if the file being downloaded exists
     def file_exists(self, loop, local_file):
         """Tests if the remote file already exists locally and it is the
-        correct file size. There is likely to be some rounding error here if
-        remote file sizes change, but it's unlikely, and shouldn't be a big
-        issue."""
+        correct file size. There is potential for some file size discrepancy
+        based on how many blocks the file actually takes up on local storage.
+        So some files may end up being re-downloaded as a result.
+        To get around this, calculate the number of blocks the local file
+        consumes, and compare that to the number of blocks the remote file
+        would consume."""
         if os.path.exists(local_file):
+            # Get the block size of the file on disk
+            block_size = os.stat(local_file).st_blksize
+
             # Remote file size
-            remote_size = round(float(loop.pkg_size), 2)
+            remote_blocks = int(loop.pkg_size/block_size)
 
             # Local file size
-            local_size = os.path.getsize(local_file)
-            local_size = round(float(local_size), 2)
+            local_blocks = int(os.path.getsize(local_file)/block_size)
+            print 'local: %s remote: %s' % (local_blocks, remote_blocks)
 
-            # Compare if local size matches remote size
-            if local_size == remote_size:
+            # Compare if local number of blocks consumed is equal to or greater
+            # than the number of blocks the remote file will consume.
+            if local_blocks >= remote_blocks:
                 return True
             else:
                 return False
@@ -321,9 +339,17 @@ class AppleLoops():
         only output what it would download, along with the file size."""
         # Only create the output directory if this isn't a dry run
         if not self.dry_run:
-            local_directory = os.path.join(self.download_location,
-                                           loop.pkg_loop_for,
-                                           loop.pkg_year)
+            if loop.pkg_mandatory:
+                local_directory = os.path.join(self.download_location,
+                                               loop.pkg_loop_for,
+                                               loop.pkg_year,
+                                               'mandatory')
+
+            if not loop.pkg_mandatory:
+                local_directory = os.path.join(self.download_location,
+                                               loop.pkg_loop_for,
+                                               loop.pkg_year,
+                                               'optional')
             # Make the download directory
             self.make_storage_location(local_directory)
 
@@ -338,7 +364,10 @@ class AppleLoops():
             # download it
             if not self.file_exists(loop, local_file):
                 try:
-                    request = urllib2.urlopen(loop.pkg_url)
+                    request = urllib2.Request(loop.pkg_url)
+                    request.add_unredirected_header('User-Agent',
+                                                    self.user_agent)
+                    request = urllib2.urlopen(request)
                 except Exception as e:
                     raise e
                 else:
@@ -358,9 +387,11 @@ class AppleLoops():
 
                         # Write out download file to the loop_file opened
                         local_file.write(buffer)
+                        # local_file.flush()
+                        os.fsync(local_file)
 
                         # Calculate percentage
-                        percent = float(bytes_so_far) / int(loop.pkg_size)
+                        percent = float(bytes_so_far) / float(loop.pkg_size)
                         percent = round(percent*100, 2)
 
                         # Output progress made
@@ -430,6 +461,7 @@ def main():
             return action.dest.upper()
 
     parser = argparse.ArgumentParser(formatter_class=SaneUsageFormat)
+    exclusive_group = parser.add_mutually_exclusive_group()
 
     # Option for package set (either 'garageband' or 'logicpro')
     parser.add_argument(
@@ -452,7 +484,7 @@ def main():
     )
 
     # Option for mandatory content only
-    parser.add_argument(
+    exclusive_group.add_argument(
         '-m', '--mandatory-only',
         action='store_true',
         dest='mandatory',
@@ -461,7 +493,7 @@ def main():
     )
 
     # Option for optional content only
-    parser.add_argument(
+    exclusive_group.add_argument(
         '-o', '--optional-only',
         action='store_true',
         dest='optional',
