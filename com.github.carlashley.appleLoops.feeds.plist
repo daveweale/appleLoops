@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>garageband</key>
+	<dict>
+		<key>2016</key>
+		<array>
+			<string>garageband1012.plist</string>
+		</array>
+	</dict>
+	<key>logicpro</key>
+	<dict>
+		<key>2016</key>
+		<array>
+			<string>logicpro1023.plist</string>
+		</array>
+	</dict>
+</dict>
+</plist>
