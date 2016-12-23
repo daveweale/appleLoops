@@ -258,7 +258,7 @@ class AppleLoops():
             for year in self.package_year:
                 package_plist = self.loop_feed_locations[pkg_set][year]
                 for plist in package_plist:
-                    print 'Processing %s and saving to %s' % (
+                    print 'Processing items from  %s and saving to %s' % (
                         plist, self.download_location
                     )
                     self.process_plist(year, plist)
@@ -276,11 +276,11 @@ class AppleLoops():
         except Exception as e:
             raise e
 
-    def progress_output(self, loop, percent, human_fs):
+    def progress_output(self, loop, percent, human_fs, items_counter):
         """Basic progress count that self updates while a
         file is downloading."""
         try:
-            stats = 'Downloading: %s' % loop.pkg_name
+            stats = 'Downloading %s: %s' % (items_counter, loop.pkg_name)
             progress = '[%0.2f%% of %s]' % (percent, human_fs)
             sys.stdout.write("\r%s %s" % (stats, progress))
             sys.stdout.flush()
@@ -324,7 +324,7 @@ class AppleLoops():
 
             # Local file size
             local_blocks = int(os.path.getsize(local_file)/block_size)
-            print 'local: %s remote: %s' % (local_blocks, remote_blocks)
+            # print 'local: %s remote: %s' % (local_blocks, remote_blocks)
 
             # Compare if local number of blocks consumed is equal to or greater
             # than the number of blocks the remote file will consume.
@@ -334,7 +334,7 @@ class AppleLoops():
                 return False
 
     # Downloads the loop file
-    def download(self, loop):
+    def download(self, loop, counter):
         """Downloads the loop, if the dry run option has been set, then it will
         only output what it would download, along with the file size."""
         # Only create the output directory if this isn't a dry run
@@ -392,10 +392,18 @@ class AppleLoops():
 
                         # Calculate percentage
                         percent = float(bytes_so_far) / float(loop.pkg_size)
-                        percent = round(percent*100, 2)
+                        percent = round(percent*100.0, 2)
+
+                        # Some files take up more space locally than remote, so
+                        # if percentage exceeds 100%, cap it.
+                        if percent >= 100.0:
+                            percent = 100.0
 
                         # Output progress made
-                        self.progress_output(loop, percent, loop_size)
+                        items_count = '%s of %s' % (counter,
+                                                    len(self.master_list))
+                        self.progress_output(loop, percent, loop_size,
+                                             items_count)
                 finally:
                     try:
                         request.close()
@@ -407,7 +415,9 @@ class AppleLoops():
                         pause = uniform(1, 5)
                         sleep(pause)
             else:
-                print 'Skipped %s - file exists' % loop.pkg_name
+                print 'Skipped %s of %s: %s - file exists' % (
+                    counter, len(self.master_list), loop.pkg_name
+                )
 
         else:
             print '%s - %s' % (loop.pkg_name, loop_size)
@@ -419,9 +429,12 @@ class AppleLoops():
         main() function - i.e. only for use by the command line."""
         # Build master list
         self.build_master_list()
-        # print self.master_list
+
+        # Do the download, and supply counter for feedback on progress
+        counter = 1
         for loop in self.master_list:
-                self.download(loop)
+                self.download(loop, counter)
+                counter += 1
 
 
 def main():
