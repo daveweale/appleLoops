@@ -1,7 +1,8 @@
 # appleLoops.py
 
 ## What does it do?
-Downloads the 'core' content that is downloaded by GarageBand or Logic Pro X on first run.
+Downloads the 'core' content that is downloaded by GarageBand, Logic Pro X, or MainStage 3 on first run.
+**Please note, you are responsible for being appropriately licsened for any/all content downloaded with this tool.**
 
 _Please note, that this release will only download content for the current versions of GarageBand or Logic Pro X, as at 2016-12-23._
 
@@ -26,7 +27,12 @@ The current version of Logic Pro X (10.2.4 as at 2016-11-23) has:
 - Approximately 1.5GB of 'essential' content for basic functionality
 - Aproximately 43.62GB of optional content available for download
 
-The 'essential' content consists of 29 packages, the optional content consists of 557 packages.
+## MainStage 3 first run behaviour
+The current version of MainStage 3 (3.2.4 as at 2016-11-23) has:
+- Approximately 1.68GB of 'essential' content for basic functionality
+- Aproximately 43.31GB of optional content available for download
+
+The 'essential' content consists of 35 packages, the optional content consists of 547 packages.
 
 ## Usage
 * `git clone https://github.com/carlashley/appleLoops`
