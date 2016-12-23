@@ -164,6 +164,14 @@ class AppleLoops():
                  package_mandatory, package_size, package_year, loop_for):
         """Add's the loop to the master list. A named tuple is used to make
         referencing attributes of each loop easier."""
+        # Apple aren't consistent with file sizes - so if the file size comes
+        # from the plist, we may need to remove characters!
+        try:
+            package_size = package_size.replace('.', '')
+        except:
+            pass
+
+        # Use the tuple Luke!
         loop = self.Loop(
             pkg_name=package_name,
             pkg_url=package_url,
@@ -223,10 +231,11 @@ class AppleLoops():
 
             # This step adds time to the processing of the plist
             try:
-                request.urllib2.Request(url)
+                request = urllib2.Request(url)
                 request.add_unredirected_header('User-Agent', self.user_agent)
                 request = urllib2.urlopen(request)
                 size = request.info().getheader('Content-Length').strip()
+
                 # Close out the urllib2 request
                 request.close()
             except:
@@ -258,7 +267,7 @@ class AppleLoops():
             for year in self.package_year:
                 package_plist = self.loop_feed_locations[pkg_set][year]
                 for plist in package_plist:
-                    print 'Processing items from  %s and saving to %s' % (
+                    print 'Processing items from %s and saving to %s' % (
                         plist, self.download_location
                     )
                     self.process_plist(year, plist)
@@ -320,7 +329,7 @@ class AppleLoops():
             block_size = os.stat(local_file).st_blksize
 
             # Remote file size
-            remote_blocks = int(loop.pkg_size/block_size)
+            remote_blocks = int(int(loop.pkg_size)/block_size)
 
             # Local file size
             local_blocks = int(os.path.getsize(local_file)/block_size)
@@ -354,9 +363,6 @@ class AppleLoops():
             self.make_storage_location(local_directory)
 
             local_file = os.path.join(local_directory, loop.pkg_name)
-
-        # Human readable file size
-        loop_size = self.convert_size(float(loop.pkg_size))
 
         # Do the download if this isn't a dry run
         if not self.dry_run:
@@ -402,7 +408,9 @@ class AppleLoops():
                         # Output progress made
                         items_count = '%s of %s' % (counter,
                                                     len(self.master_list))
-                        self.progress_output(loop, percent, loop_size,
+                        self.progress_output(loop, percent,
+                                             self.convert_size(float(
+                                                 loop.pkg_size)),
                                              items_count)
                 finally:
                     try:
@@ -420,7 +428,8 @@ class AppleLoops():
                 )
 
         else:
-            print '%s - %s' % (loop.pkg_name, loop_size)
+            print '%s - %s' % (loop.pkg_name,
+                               self.convert_size(float(loop.pkg_size)))
 
     # This is the primary processor for the main function - only used for
     # command line based script usage
@@ -433,8 +442,16 @@ class AppleLoops():
         # Do the download, and supply counter for feedback on progress
         counter = 1
         for loop in self.master_list:
-                self.download(loop, counter)
-                counter += 1
+            self.download(loop, counter)
+            counter += 1
+
+        # Additional information for dry run
+        download_amount = []
+        for loop in self.master_list:
+            download_amount.append(int(loop.pkg_size))
+
+        download_amount = sum(download_amount)
+        print 'Total of %s to download' % self.convert_size(download_amount)
 
 
 def main():
