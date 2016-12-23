@@ -160,6 +160,14 @@ class AppleLoops():
         seperator = '/'
         return seperator.join([self.base_url + loop_year, filename])
 
+    # Wrap around urllib2 for requesting URL's because this is done often
+    # enough
+    def request_url(self, url):
+        req = urllib2.Request(url)
+        req.add_unredirected_header('User-Agent', self.user_agent)
+        req = urllib2.urlopen(req)
+        return req
+
     def add_loop(self, package_name, package_url,
                  package_mandatory, package_size, package_year, loop_for):
         """Add's the loop to the master list. A named tuple is used to make
@@ -194,9 +202,7 @@ class AppleLoops():
         plist_url = self.build_url(loop_year, plist)
 
         # URL requests
-        request = urllib2.Request(plist_url)
-        request.add_unredirected_header('User-Agent', self.user_agent)
-        request = urllib2.urlopen(request)
+        request = self.request_url(plist_url)
 
         # Process request data into dictionary
         data = readPlistFromString(request.read())
@@ -231,9 +237,7 @@ class AppleLoops():
 
             # This step adds time to the processing of the plist
             try:
-                request = urllib2.Request(url)
-                request.add_unredirected_header('User-Agent', self.user_agent)
-                request = urllib2.urlopen(request)
+                request = self.request_url(url)
                 size = request.info().getheader('Content-Length').strip()
 
                 # Close out the urllib2 request
@@ -333,7 +337,6 @@ class AppleLoops():
 
             # Local file size
             local_blocks = int(os.path.getsize(local_file)/block_size)
-            # print 'local: %s remote: %s' % (local_blocks, remote_blocks)
 
             # Compare if local number of blocks consumed is equal to or greater
             # than the number of blocks the remote file will consume.
@@ -370,10 +373,7 @@ class AppleLoops():
             # download it
             if not self.file_exists(loop, local_file):
                 try:
-                    request = urllib2.Request(loop.pkg_url)
-                    request.add_unredirected_header('User-Agent',
-                                                    self.user_agent)
-                    request = urllib2.urlopen(request)
+                    request = self.request_url(loop.pkg_url)
                 except Exception as e:
                     raise e
                 else:
@@ -445,13 +445,17 @@ class AppleLoops():
             self.download(loop, counter)
             counter += 1
 
-        # Additional information for dry run
+        # Additional information for end of download run
         download_amount = []
         for loop in self.master_list:
             download_amount.append(int(loop.pkg_size))
 
         download_amount = sum(download_amount)
-        print 'Total of %s to download' % self.convert_size(download_amount)
+
+        if self.dry_run:
+            print 'To download: %s' % self.convert_size(download_amount)
+        else:
+            print 'Downloaded: %s ' % self.convert_size(download_amount)
 
 
 def main():
