@@ -115,13 +115,9 @@ class AppleLoops():
             'http://audiocontentdownload.apple.com/lp10_ms3_content_'
         )
 
-        # Dictionary of plist feeds to parse
-        # The dictionary contains two dictionaries, one for Logic Pro, the
-        # other for GarageBand, which then contains a dictionary for release
-        # year, which then has a list of plist feeds that Apple use for the
-        # releases where loops are updated.
-        # For example: self.loop_locations['logic_pro']['2016'][0]
-        # Returns: 'logicpro1023.plist'
+        # Dictionary of plist feeds to parse - these are Apple provided plists
+        # Will look into possibly using local copies maintained in
+        # GarageBand/Logic Pro X app bundles.
         # Note - dropped support for anything prior to 2016 releases
         self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/master/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
         self.loop_feed_locations = readPlistFromString(self.feeds.read())
