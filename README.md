@@ -2,9 +2,10 @@
 
 ## What does it do?
 Downloads the 'core' content that is downloaded by GarageBand, Logic Pro X, or MainStage 3 on first run.
-**Please note, you are responsible for being appropriately licsened for any/all content downloaded with this tool.**
 
-_Please note, that this release will only download content for the current versions of GarageBand or Logic Pro X, as at 2016-12-23._
+**You are responsible for being appropriately licsened for any/all content downloaded with this tool.**
+
+_Please note, that this release will only download content for the current versions of these apps, as at 2016-12-23._
 
 _There are no plans to support older versions of these apps._
 
