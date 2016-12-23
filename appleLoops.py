@@ -428,8 +428,9 @@ class AppleLoops():
                 )
 
         else:
-            print '%s - %s' % (loop.pkg_name,
-                               self.convert_size(float(loop.pkg_size)))
+            print '%s - %s' % (
+                loop.pkg_name, self.convert_size(float(loop.pkg_size))
+            )
 
     # This is the primary processor for the main function - only used for
     # command line based script usage
@@ -453,7 +454,9 @@ class AppleLoops():
         download_amount = sum(download_amount)
 
         if self.dry_run:
-            print 'To download: %s' % self.convert_size(download_amount)
+            print '%s packages to download: %s' % (
+                len(self.master_list), self.convert_size(download_amount)
+            )
         else:
             print 'Downloaded: %s ' % self.convert_size(download_amount)
 
