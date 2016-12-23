@@ -16,5 +16,12 @@
 			<string>logicpro1023.plist</string>
 		</array>
 	</dict>
+	<key>mainstage</key>
+	<dict>
+		<key>2016</key>
+		<array>
+			<string>mainstage324.plist</string>
+		</array>
+	</dict>
 </dict>
 </plist>
