@@ -7,6 +7,9 @@ Downloads the 'core' content that is downloaded by GarageBand or Logic Pro X on 
 * Install packages
 * Import packages into your package deployment system
 
+## Requirements
+macOS with the system standard `python`.
+
 ## GarageBand first run behaviour
 The current version of GarageBand (10.1.4 as at 2016-12-23) does the following:
 - Prompts to download approximately 1.96GB of 'essential' content for basic functionality
@@ -30,3 +33,20 @@ The 'essential' content consists of 29 packages, the optional content consists o
 * `./appleLoops.py --dry-run --package-set garageband --optional-only` will do a dry run for all GarageBand optional content
 * `./appleLoops.py --package-set logicpro --mandatory-only` will download all essential Logic Pro X content
 
+# Copyright
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+Elements of `FoundationPlist.py` from `munki` are used in this tool.
+https://github.com/munki/munki
