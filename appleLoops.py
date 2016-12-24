@@ -26,6 +26,7 @@ import sys
 import urllib2
 from random import uniform
 from time import sleep
+from urlparse import urlparse
 
 # PyLint cannot properly find names inside Cocoa libraries, so issues bogus
 # No name 'Foo' in module 'Bar' warnings. Disable them.
@@ -84,7 +85,7 @@ class AppleLoops():
     and Logic Pro, as well as downloading loops content."""
     def __init__(self, download_location=None, dry_run=True,
                  package_set=None, package_year=None,
-                 mandatory_pkg=False, optional_pkg=False):
+                 mandatory_pkg=False, optional_pkg=False, caching_server=None):
         if not download_location:
             self.download_location = os.path.join('/tmp', 'appleLoops')
         else:
@@ -105,9 +106,6 @@ class AppleLoops():
         # Set optional package to option specified. Default is false.
         self.optional_pkg = optional_pkg
 
-        # User-Agent string for this tool
-        self.user_agent = 'appleLoops/%s' % __version__
-
         # Base URL for loops
         # This URL needs to be re-assembled into the correct format of:
         # http://audiocontentdownload.apple.com/lp10_ms3_content_YYYY/filename.ext
@@ -115,11 +113,25 @@ class AppleLoops():
             'http://audiocontentdownload.apple.com/lp10_ms3_content_'
         )
 
+        # Configure cache server if argument is provided
+        if caching_server:
+            self.caching_server = caching_server.rstrip('/')
+
+            # Base URL needs to change
+            self.source_url = '?source=%s' % urlparse(self.base_url).netloc
+            self.cache_base_url = '%s/lp10_ms3_content_' % self.caching_server
+        else:
+            self.caching_server = None
+
+        # User-Agent string for this tool
+        self.user_agent = 'appleLoops/%s' % __version__
+
         # Dictionary of plist feeds to parse - these are Apple provided plists
         # Will look into possibly using local copies maintained in
         # GarageBand/Logic Pro X app bundles.
         # Note - dropped support for anything prior to 2016 releases
         self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/test/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
+        # self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/master/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
         self.loop_feed_locations = readPlistFromString(self.feeds.read())
         self.feeds.close()
 
@@ -141,6 +153,7 @@ class AppleLoops():
 
         # Empty list to put all the content that we're going to work on into.
         self.master_list = []
+        self.file_copy_master_list = []
 
         # Download amount list
         self.download_amount = []
@@ -148,7 +161,16 @@ class AppleLoops():
     def build_url(self, loop_year, filename):
         """Builds the URL for each plist feed"""
         seperator = '/'
-        return seperator.join([self.base_url + loop_year, filename])
+
+        # If caching server and filename ends with '.pkg', we use a special URL
+        # format, so use self.cache_base_url instead of self.base_url
+        if self.caching_server and filename.endswith('.pkg'):
+            built_url = seperator.join([self.cache_base_url + loop_year,
+                                        filename + self.source_url])
+        else:
+            built_url = seperator.join([self.base_url + loop_year, filename])
+
+        return built_url
 
     # Wrap around urllib2 for requesting URL's because this is done often
     # enough
@@ -490,6 +512,17 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=SaneUsageFormat)
     exclusive_group = parser.add_mutually_exclusive_group()
 
+    # Option for cache server URL
+    parser.add_argument(
+        '-c', '--cache-server',
+        type=str,
+        nargs=1,
+        dest='cache_server',
+        metavar='http://url:port',
+        help='Use cache server to download content through',
+        required=False
+    )
+
     # Option for package set (either 'garageband' or 'logicpro')
     parser.add_argument(
         '-p', '--package-set',
@@ -570,13 +603,20 @@ def main():
     else:
         year = args.content_year
 
+    # Set output directory
+    if args.cache_server and len(args.cache_server) is 1:
+        cache_server = args.cache_server[0]
+    else:
+        cache_server = None
+
     # Instantiate the class AppleLoops with options
     loops = AppleLoops(download_location=store_in,
                        dry_run=args.dry_run,
                        package_set=pkg_set,
                        package_year=year,
                        mandatory_pkg=args.mandatory,
-                       optional_pkg=args.optional)
+                       optional_pkg=args.optional,
+                       caching_server=cache_server)
 
     loops.main_processor()
 
