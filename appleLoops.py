@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Downloads required audio loops for GarageBand and Logic Pro.
+Downloads required audio loops for GarageBand, Logic Pro X, and MainStage 3.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -119,7 +119,7 @@ class AppleLoops():
         # Will look into possibly using local copies maintained in
         # GarageBand/Logic Pro X app bundles.
         # Note - dropped support for anything prior to 2016 releases
-        self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/master/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
+        self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/test/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
         self.loop_feed_locations = readPlistFromString(self.feeds.read())
         self.feeds.close()
 
@@ -141,6 +141,9 @@ class AppleLoops():
 
         # Empty list to put all the content that we're going to work on into.
         self.master_list = []
+
+        # Download amount list
+        self.download_amount = []
 
     def build_url(self, loop_year, filename):
         """Builds the URL for each plist feed"""
@@ -336,26 +339,26 @@ class AppleLoops():
     def download(self, loop, counter):
         """Downloads the loop, if the dry run option has been set, then it will
         only output what it would download, along with the file size."""
-        # Only create the output directory if this isn't a dry run
-        if not self.dry_run:
-            if loop.pkg_mandatory:
-                local_directory = os.path.join(self.download_location,
-                                               loop.pkg_loop_for,
-                                               loop.pkg_year,
-                                               'mandatory')
+        if loop.pkg_mandatory:
+            local_directory = os.path.join(self.download_location,
+                                           loop.pkg_loop_for,
+                                           loop.pkg_year,
+                                           'mandatory')
 
-            if not loop.pkg_mandatory:
-                local_directory = os.path.join(self.download_location,
-                                               loop.pkg_loop_for,
-                                               loop.pkg_year,
-                                               'optional')
-            # Make the download directory
-            self.make_storage_location(local_directory)
+        if not loop.pkg_mandatory:
+            local_directory = os.path.join(self.download_location,
+                                           loop.pkg_loop_for,
+                                           loop.pkg_year,
+                                           'optional')
 
-            local_file = os.path.join(local_directory, loop.pkg_name)
+        local_file = os.path.join(local_directory, loop.pkg_name)
 
         # Do the download if this isn't a dry run
         if not self.dry_run:
+            # Only create the output directory if this isn't a dry run
+            # Make the download directory
+            self.make_storage_location(local_directory)
+
             # If the file doesn't already exist, or isn't a complete file,
             # download it
             if not self.file_exists(loop, local_file):
@@ -384,11 +387,13 @@ class AppleLoops():
                         os.fsync(local_file)
 
                         # Calculate percentage
-                        percent = float(bytes_so_far) / float(loop.pkg_size)
+                        percent = (
+                            float(bytes_so_far) / float(loop.pkg_size)
+                        )
                         percent = round(percent*100.0, 2)
 
-                        # Some files take up more space locally than remote, so
-                        # if percentage exceeds 100%, cap it.
+                        # Some files take up more space locally than
+                        # remote, so if percentage exceeds 100%, cap it.
                         if percent >= 100.0:
                             percent = 100.0
 
@@ -402,22 +407,23 @@ class AppleLoops():
                 finally:
                     try:
                         request.close()
+                        self.download_amount.append(float(loop.pkg_size))
                     except:
                         pass
                     else:
-                        # Let a random sleep of 1-5 seconds happen between each
-                        # download
+                        # Let a random sleep of 1-5 seconds happen between
+                        # each download
                         pause = uniform(1, 5)
                         sleep(pause)
             else:
                 print 'Skipped %s of %s: %s - file exists' % (
                     counter, len(self.master_list), loop.pkg_name
                 )
-
         else:
-            print '%s - %s' % (
+            print 'Download: %s - %s' % (
                 loop.pkg_name, self.convert_size(float(loop.pkg_size))
             )
+            self.download_amount.append(float(loop.pkg_size))
 
     # This is the primary processor for the main function - only used for
     # command line based script usage
@@ -434,18 +440,15 @@ class AppleLoops():
             counter += 1
 
         # Additional information for end of download run
-        download_amount = []
-        for loop in self.master_list:
-            download_amount.append(int(loop.pkg_size))
-
-        download_amount = sum(download_amount)
+        download_amount = sum(self.download_amount)
 
         if self.dry_run:
             print '%s packages to download: %s' % (
                 len(self.master_list), self.convert_size(download_amount)
             )
         else:
-            print 'Downloaded: %s ' % self.convert_size(download_amount)
+            if len(self.download_amount) >= 1:
+                print 'Downloaded: %s ' % self.convert_size(download_amount)
 
 
 def main():
@@ -493,7 +496,7 @@ def main():
         type=str,
         nargs='+',
         dest='package_set',
-        choices=['garageband', 'logicpro'],
+        choices=['garageband', 'logicpro', 'mainstage'],
         help='Specify one or more package set to download',
         required=False
     )
