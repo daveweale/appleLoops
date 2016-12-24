@@ -41,6 +41,8 @@ The 'essential' content consists of 35 packages, the optional content consists o
 * `./appleLoops.py --dry-run --package-set garageband --optional-only` will do a dry run for all GarageBand optional content
 * `./appleLoops.py --package-set logicpro --mandatory-only` will download all essential Logic Pro X content
 
+## Behaviour
+
 ### Package download location
 * Defaults to `/tmp/appleLoops` with subfolders for `garageband` and `logicpro`.
 * Mandatory/optional content gets saved into `YYYY/mandatory` or `YYYY/optional`
@@ -51,6 +53,15 @@ Example for GarageBand content:
 Download path can be overriden with the `-d <folder>` or `--destination <folder>` option. If the folder doesn't exist, it gets created (make sure you have permission to create directories in the specified destination).
 
 Subfolder heirarchy remains the same.
+
+### Duplicate content
+Where a package from one app is used in another app, if a local copy already exists in other folders, copy that into the new location instead of downloading it again.
+
+### Resume downloads
+Where possible, downloads are resumed (incomplete files are over-written).
+
+### Resume copies
+Tested behaviour indicates if a local copy already exists, and the new file doesn't or only partially exists, the utility will copy the existing file into the new location, and continue processing remaining files. _CAUTION - COULD LEAD TO MALFORMED/CORRUPT FILES_
 
 # Copyright
 ```
