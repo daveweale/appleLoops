@@ -62,7 +62,8 @@ Where possible, downloads are resumed (incomplete files are over-written).
 
 ### Resume copies
 Tested behaviour indicates if a local copy already exists, and the new file doesn't or only partially exists, the utility will copy the existing file into the new location, and continue processing remaining files.
-*_CAUTION - COULD LEAD TO MALFORMED/CORRUPT FILES_*
+
+**_CAUTION - COULD LEAD TO MALFORMED/CORRUPT FILES_**
 
 # Copyright
 ```
