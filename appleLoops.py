@@ -22,8 +22,10 @@ https://github.com/munki/munki
 import argparse
 import collections
 import os
+import shutil
 import sys
 import urllib2
+from glob import glob
 from random import uniform
 from time import sleep
 from urlparse import urlparse
@@ -41,12 +43,12 @@ from Foundation import NSPropertyListXMLFormat_v1_0  # NOQA
 __author__ = 'Carl Windus'
 __copyright__ = 'Copyright 2016, Carl Windus'
 __credits__ = ['Greg Neagle', 'Matt Wilkie']
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __date__ = '2016-12-23'
 
 __license__ = 'Apache License, Version 2.0'
 __maintainer__ = 'Carl Windus'
-__status__ = 'Production'
+__status__ = 'Testing'
 
 
 # Acknowledgements to Greg Neagle and `munki` for this section of code.
@@ -357,6 +359,60 @@ class AppleLoops():
             else:
                 return False
 
+    # Test duplicate file
+    def duplicate_file(self, loop):
+        glob_path = glob('%s/*/*/*/' % self.download_location)
+
+        # Test if file exists
+        for path in glob_path:
+            if self.file_exists(loop, os.path.join(path, loop.pkg_name)):
+                return True
+            else:
+                return False
+
+    # Copy duplicate file, don't download
+    def copy_duplicate(self, loop, counter):
+        glob_path = glob('%s/*/*/*/' % self.download_location)
+
+        if loop.pkg_mandatory:
+            local_directory = os.path.join(self.download_location,
+                                           loop.pkg_loop_for,
+                                           loop.pkg_year,
+                                           'mandatory')
+
+        if not loop.pkg_mandatory:
+            local_directory = os.path.join(self.download_location,
+                                           loop.pkg_loop_for,
+                                           loop.pkg_year,
+                                           'optional')
+
+        local_file = os.path.join(local_directory, loop.pkg_name)
+
+        # Test if file exists, then test if the file exists and matches the
+        # size it should be, if so, we can copy it.
+        if not self.file_exists(loop, local_file):
+            for path in glob_path:
+                if self.file_exists(loop, os.path.join(path, loop.pkg_name)):
+                    existing_copy = os.path.join(path, loop.pkg_name)
+                    if not self.dry_run:
+                        # Make directories otherwise the copy operation fails
+                        self.make_storage_location(local_directory)
+                        shutil.copy2(existing_copy, local_file)
+                        print 'Copied %s of %s: %s' % (
+                            counter, len(self.master_list), existing_copy
+                        )
+                        break
+                    else:
+                        print 'Copy: %s' % existing_copy
+                        break
+        else:
+            if not self.dry_run:
+                    print 'Skipped %s of %s: %s - file exists' % (
+                        counter, len(self.master_list), loop.pkg_name
+                    )
+            else:
+                print 'Skip: %s - file exists' % loop.pkg_name
+
     # Downloads the loop file
     def download(self, loop, counter):
         """Downloads the loop, if the dry run option has been set, then it will
@@ -442,10 +498,13 @@ class AppleLoops():
                     counter, len(self.master_list), loop.pkg_name
                 )
         else:
-            print 'Download: %s - %s' % (
-                loop.pkg_name, self.convert_size(float(loop.pkg_size))
-            )
-            self.download_amount.append(float(loop.pkg_size))
+            if not self.file_exists(loop, local_file):
+                print 'Download: %s - %s' % (
+                    loop.pkg_name, self.convert_size(float(loop.pkg_size))
+                )
+                self.download_amount.append(float(loop.pkg_size))
+            else:
+                print 'Skip: %s - file exists' % loop.pkg_name
 
     # This is the primary processor for the main function - only used for
     # command line based script usage
@@ -457,20 +516,28 @@ class AppleLoops():
 
         # Do the download, and supply counter for feedback on progress
         counter = 1
+        download_counter = 0
         for loop in self.master_list:
-            self.download(loop, counter)
+            if self.duplicate_file(loop):
+                self.copy_duplicate(loop, counter)
+            else:
+                self.download(loop, counter)
+                download_counter += 1
             counter += 1
 
         # Additional information for end of download run
         download_amount = sum(self.download_amount)
 
         if self.dry_run:
-            print '%s packages to download: %s' % (
-                len(self.master_list), self.convert_size(download_amount)
+            print '%s packages to process, %s (%s) to download' % (
+                len(self.master_list), download_counter,
+                self.convert_size(download_amount)
             )
         else:
             if len(self.download_amount) >= 1:
-                print 'Downloaded: %s ' % self.convert_size(download_amount)
+                print 'Downloaded %s packages (%s) ' % (
+                    download_counter, self.convert_size(download_amount)
+                )
 
 
 def main():
