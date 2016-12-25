@@ -1,7 +1,7 @@
 # appleLoops.py
 
 ## What does it do?
-Downloads the 'core' content that is downloaded by GarageBand, Logic Pro X, or MainStage 3 on first run.
+This utility can download all the essential content required by GarageBand, Logic Pro X, and MainStage, as well as optional content that is available for the same apps.
 
 **You are responsible for being appropriately licsened for any/all content downloaded with this tool.**
 
@@ -44,6 +44,9 @@ The 'essential' content consists of 35 packages, the optional content consists o
 
 ## Behaviour
 
+### Proxies
+Untested - if there are issues with using this to download the content whilst behind a proxy, try downloading outside of the content, or if you can contribute some code to improve that behaviour, please feel free to create a pull request.
+
 ### Package download location
 * Defaults to `/tmp/appleLoops` with subfolders for `garageband` and `logicpro`.
 * Mandatory/optional content gets saved into `YYYY/mandatory` or `YYYY/optional`
@@ -64,7 +67,7 @@ Where possible, downloads are resumed (incomplete files are over-written).
 ### Resume copies
 Tested behaviour indicates if a local copy already exists, and the new file doesn't or only partially exists, the utility will copy the existing file into the new location, and continue processing remaining files.
 
-**_CAUTION - COULD LEAD TO MALFORMED/CORRUPT FILES_**
+_This could potentialy leave some files corrupted._
 
 # Copyright
 ```
