@@ -47,7 +47,7 @@ __version__ = '1.1.0'
 __date__ = '2016-12-23'
 
 __license__ = 'Apache License, Version 2.0'
-__maintainer__ = 'Carl Windus'
+__maintainer__ = 'Carl Windus: https://github.com/carlashley/appleLoops'
 __status__ = 'Testing'
 
 
@@ -223,7 +223,7 @@ class AppleLoops():
         loop_for = os.path.splitext(plist)[0]
 
         # I don't like using regex, so here's a lambda to remove numbers from
-        # part of the loop URL to use as an indicator for what app the loops is
+        # part of the loop URL to use as an indicator for what app the loop is
         # for
         loop_for = ''.join(map(lambda c: '' if c in '0123456789' else c,
                                loop_for))
