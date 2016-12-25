@@ -373,19 +373,7 @@ class AppleLoops():
     # Copy duplicate file, don't download
     def copy_duplicate(self, loop, counter):
         glob_path = glob('%s/*/*/*/' % self.download_location)
-
-        if loop.pkg_mandatory:
-            local_directory = os.path.join(self.download_location,
-                                           loop.pkg_loop_for,
-                                           loop.pkg_year,
-                                           'mandatory')
-
-        if not loop.pkg_mandatory:
-            local_directory = os.path.join(self.download_location,
-                                           loop.pkg_loop_for,
-                                           loop.pkg_year,
-                                           'optional')
-
+        local_directory = self.local_directory(loop)
         local_file = os.path.join(local_directory, loop.pkg_name)
 
         # Test if file exists, then test if the file exists and matches the
@@ -413,22 +401,24 @@ class AppleLoops():
             else:
                 print 'Skip: %s - file exists' % loop.pkg_name
 
+    # Test if loop is mandatory or not, and return the correct local directory
+    def local_directory(self, loop):
+        if loop.pkg_mandatory:
+            return os.path.join(self.download_location,
+                                loop.pkg_loop_for,
+                                loop.pkg_year,
+                                'mandatory')
+        else:
+            return os.path.join(self.download_location,
+                                loop.pkg_loop_for,
+                                loop.pkg_year,
+                                'optional')
+
     # Downloads the loop file
     def download(self, loop, counter):
         """Downloads the loop, if the dry run option has been set, then it will
         only output what it would download, along with the file size."""
-        if loop.pkg_mandatory:
-            local_directory = os.path.join(self.download_location,
-                                           loop.pkg_loop_for,
-                                           loop.pkg_year,
-                                           'mandatory')
-
-        if not loop.pkg_mandatory:
-            local_directory = os.path.join(self.download_location,
-                                           loop.pkg_loop_for,
-                                           loop.pkg_year,
-                                           'optional')
-
+        local_directory = self.local_directory(loop)
         local_file = os.path.join(local_directory, loop.pkg_name)
 
         # Do the download if this isn't a dry run
