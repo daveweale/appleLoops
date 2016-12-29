@@ -2,26 +2,33 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>garageband</key>
+	<key>loop_feeds</key>
 	<dict>
-		<key>2016</key>
-		<array>
-			<string>garageband1012.plist</string>
-		</array>
+		<key>garageband</key>
+		<dict>
+			<key>2016</key>
+			<array>
+				<string>garageband1012.plist</string>
+			</array>
+		</dict>
+		<key>logicpro</key>
+		<dict>
+			<key>2016</key>
+			<array>
+				<string>logicpro1023.plist</string>
+			</array>
+		</dict>
+		<key>mainstage</key>
+		<dict>
+			<key>2016</key>
+			<array>
+				<string>mainstage324.plist</string>
+			</array>
+		</dict>
 	</dict>
-	<key>logicpro</key>
-	<dict>
-		<key>2016</key>
-		<array>
-			<string>logicpro1023.plist</string>
-		</array>
-	</dict>
-	<key>mainstage</key>
-	<dict>
-		<key>2016</key>
-		<array>
-			<string>mainstage324.plist</string>
-		</array>
-	</dict>
+	<key>loop_years</key>
+	<array>
+		<string>2016</string>
+	</array>
 </dict>
 </plist>
