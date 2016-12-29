@@ -134,10 +134,11 @@ class AppleLoops():
         # Note - dropped support for anything prior to 2016 releases
         self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/test/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
         # self.feeds = self.request_url('https://raw.githubusercontent.com/carlashley/appleLoops/master/com.github.carlashley.appleLoops.feeds.plist')  # NOQA
-        self.loop_feed_locations = readPlistFromString(self.feeds.read())
+        self.config = readPlistFromString(self.feeds.read())
+        self.loop_feed_locations = self.config['loop_feeds']
+        self.loop_years = self.config['loop_years']
         self.feeds.close()
 
-        self.loop_years = ['2016']
         # Create a named tuple for our loops master list
         # These 'attributes' are:
         # pkg_name = Package file name
