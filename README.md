@@ -61,6 +61,8 @@ Subfolder heirarchy remains the same.
 ### Duplicate content
 Where a package from one app is used in another app, if a local copy already exists in other folders, copy that into the new location instead of downloading it again.
 
+This only checks the default `/tmp/appleLoops` path or the specified path supplied with the `-d` or `--destination-path` arguments.
+
 ### Resume downloads
 Where possible, downloads are resumed (incomplete files are over-written).
 
