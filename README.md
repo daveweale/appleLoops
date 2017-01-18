@@ -18,7 +18,7 @@ The current version of GarageBand (10.1.5 as at 2017-01-19) does the following:
 - Prompts to download approximately 1.87GB of 'essential' content for basic functionality
 - Prompts to download approximately 26.49GB of optional content for extended functionality
 
-The 'essential' content consists of 35 packages, the optional content consists of 56 packages.
+The 'essential' content consists of 33 packages, the optional content consists of 359 packages.
 
 ## Logic Pro X first run behaviour
 The current version of Logic Pro X (10.2.4 as at 2016-11-23) has:
