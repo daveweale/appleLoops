@@ -86,10 +86,10 @@ def readPlistFromString(data):
 class AppleLoops():
     """Class contains functions for parsing Apple's plist feeds for GarageBand
     and Logic Pro, as well as downloading loops content."""
-    def __init__(self, init_for_help=False, download_location=None,
-                 dry_run=True, package_set=None, package_year=None,
+    def __init__(self, download_location=None, dry_run=True,
+                 package_set=None, package_year=None,
                  mandatory_pkg=False, optional_pkg=False,
-                 caching_server=None):
+                 caching_server=None, files_process=None):
         try:
             if not download_location:
                 self.download_location = os.path.join('/tmp', 'appleLoops')
@@ -321,6 +321,8 @@ class AppleLoops():
         """This builds the master list of audio content so it (the master list)
         can be processed in other functions. Yeah, there's some funky Big O
         here."""
+
+        # This is where we'll check if we're processing a specific file or not
         try:
             # Yo dawg, heard you like for loops, so I put for loops in your for
             # loops
@@ -620,7 +622,6 @@ def main():
         Code used was from Matt Wilkie.
         http://stackoverflow.com/questions/9642692/argparse-help-without-duplicate-allcaps/9643162#9643162
         """
-        loops = AppleLoops(init_for_help=True)
 
         def _format_action_invocation(self, action):
             if not action.option_strings:
