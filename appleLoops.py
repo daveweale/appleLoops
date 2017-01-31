@@ -86,9 +86,10 @@ def readPlistFromString(data):
 class AppleLoops():
     """Class contains functions for parsing Apple's plist feeds for GarageBand
     and Logic Pro, as well as downloading loops content."""
-    def __init__(self, download_location=None, dry_run=True,
-                 package_set=None, package_year=None,
-                 mandatory_pkg=False, optional_pkg=False, caching_server=None):
+    def __init__(self, init_for_help=False, download_location=None,
+                 dry_run=True, package_set=None, package_year=None,
+                 mandatory_pkg=False, optional_pkg=False,
+                 caching_server=None):
         try:
             if not download_location:
                 self.download_location = os.path.join('/tmp', 'appleLoops')
@@ -141,7 +142,21 @@ class AppleLoops():
             self.config = readPlistFromString(self.feeds.read())
             self.loop_feed_locations = self.config['loop_feeds']
             self.loop_years = self.config['loop_years']
+
+            self.file_choices = []
+            # Seriously inelegant, but it works :shrug:
+            for year in self.config['loop_years']:
+                for app_feed in self.config['loop_feeds']:
+                    for plist in self.loop_feed_locations[app_feed][year]:
+                        if plist not in self.file_choices:
+                            self.file_choices.append(str(plist))
+
             self.feeds.close()
+
+            # Break the initialisation of the class if help is called at the
+            # command line
+            while init_for_help:
+                break
 
             # Create a named tuple for our loops master list
             # These 'attributes' are:
@@ -605,6 +620,8 @@ def main():
         Code used was from Matt Wilkie.
         http://stackoverflow.com/questions/9642692/argparse-help-without-duplicate-allcaps/9643162#9643162
         """
+        loops = AppleLoops(init_for_help=True)
+
         def _format_action_invocation(self, action):
             if not action.option_strings:
                 default = self._get_default_metavar_for_positional(action)
@@ -648,14 +665,35 @@ def main():
         required=False
     )
 
-    # Option for package set (either 'garageband' or 'logicpro')
+    # Option for output directory
     parser.add_argument(
-        '-p', '--package-set',
+        '-d', '--destination',
+        type=str,
+        nargs=1,
+        dest='destination',
+        metavar='<folder>',
+        help='Download location for loops content',
+        required=False
+    )
+
+    # Option for parsing a particular file
+    parser.add_argument(
+        '-f', '--file',
         type=str,
         nargs='+',
-        dest='package_set',
-        choices=['garageband', 'logicpro', 'mainstage'],
-        help='Specify one or more package set to download',
+        dest='plist_file',
+        choices=(AppleLoops().file_choices),
+        # choices=['foo'],
+        # metavar='<file>',
+        help='Specify one or more files to process loops from',
+        required=False
+    )
+    # Option for mandatory content only
+    exclusive_group.add_argument(
+        '-m', '--mandatory-only',
+        action='store_true',
+        dest='mandatory',
+        help='Download mandatory content only',
         required=False
     )
 
@@ -668,15 +706,6 @@ def main():
         required=False
     )
 
-    # Option for mandatory content only
-    exclusive_group.add_argument(
-        '-m', '--mandatory-only',
-        action='store_true',
-        dest='mandatory',
-        help='Download mandatory content only',
-        required=False
-    )
-
     # Option for optional content only
     exclusive_group.add_argument(
         '-o', '--optional-only',
@@ -686,14 +715,14 @@ def main():
         required=False
     )
 
-    # Option for output directory
+    # Option for package set (either 'garageband' or 'logicpro')
     parser.add_argument(
-        '-d', '--destination',
+        '-p', '--package-set',
         type=str,
-        nargs=1,
-        dest='destination',
-        metavar='<folder>',
-        help='Download location for loops content',
+        nargs='+',
+        dest='package_set',
+        choices=['garageband', 'logicpro', 'mainstage'],
+        help='Specify one or more package set to download',
         required=False
     )
 
@@ -711,39 +740,44 @@ def main():
     args = parser.parse_args()
 
     # Set which package set to download
-    if args.package_set:
-        pkg_set = args.package_set
+    print args
+    if args is None:
+        print 'No arguments here'
     else:
-        pkg_set = ['garageband']
-
-    # Set output directory
-    if args.destination and len(args.destination) is 1:
-        store_in = args.destination[0]
-    else:
-        store_in = None
-
-    # Set content year
-    if not args.content_year:
-        year = ['2016']
-    else:
-        year = args.content_year
-
-    # Set output directory
-    if args.cache_server and len(args.cache_server) is 1:
-        cache_server = args.cache_server[0]
-    else:
-        cache_server = None
-
-    # Instantiate the class AppleLoops with options
-    loops = AppleLoops(download_location=store_in,
-                       dry_run=args.dry_run,
-                       package_set=pkg_set,
-                       package_year=year,
-                       mandatory_pkg=args.mandatory,
-                       optional_pkg=args.optional,
-                       caching_server=cache_server)
-
-    loops.main_processor()
+        print 'Arguments provided'
+#         if args.package_set:
+#             pkg_set = args.package_set
+#         else:
+#             pkg_set = ['garageband']
+# 
+#         # Set output directory
+#         if args.destination and len(args.destination) is 1:
+#             store_in = args.destination[0]
+#         else:
+#             store_in = None
+# 
+#         # Set content year
+#         if not args.content_year:
+#             year = ['2016']
+#         else:
+#             year = args.content_year
+# 
+#         # Set output directory
+#         if args.cache_server and len(args.cache_server) is 1:
+#             cache_server = args.cache_server[0]
+#         else:
+#             cache_server = None
+# 
+#         # Instantiate the class AppleLoops with options
+#         loops = AppleLoops(download_location=store_in,
+#                            dry_run=args.dry_run,
+#                            package_set=pkg_set,
+#                            package_year=year,
+#                            mandatory_pkg=args.mandatory,
+#                            optional_pkg=args.optional,
+#                            caching_server=cache_server)
+# 
+#         loops.main_processor()
 
 if __name__ == '__main__':
     try:
