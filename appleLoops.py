@@ -130,6 +130,12 @@ class AppleLoops():
             else:
                 self.caching_server = None
 
+            # Processing specific files or not
+            if files_process:
+                self.files_process = files_process
+            else:
+                self.files_process = False
+
             # User-Agent string for this tool
             self.user_agent = 'appleLoops/%s' % __version__
 
@@ -148,15 +154,12 @@ class AppleLoops():
             for year in self.config['loop_years']:
                 for app_feed in self.config['loop_feeds']:
                     for plist in self.loop_feed_locations[app_feed][year]:
+                        # This builds the choices list for the argparse further
+                        # down
                         if plist not in self.file_choices:
                             self.file_choices.append(str(plist))
 
             self.feeds.close()
-
-            # Break the initialisation of the class if help is called at the
-            # command line
-            while init_for_help:
-                break
 
             # Create a named tuple for our loops master list
             # These 'attributes' are:
@@ -247,6 +250,9 @@ class AppleLoops():
         as python's native plistlib module doesn't read binary plists, which
         Apple has used in past releases."""
         try:
+            print 'Processing items from %s and saving to %s' % (
+                                plist, self.download_location
+                            )
             # Note - the package size specified in the plist feeds doesn't
             # always match the actual package size, so check header
             # 'Content-Length' to determine correct package size.
@@ -325,15 +331,25 @@ class AppleLoops():
         # This is where we'll check if we're processing a specific file or not
         try:
             # Yo dawg, heard you like for loops, so I put for loops in your for
-            # loops
-            for pkg_set in self.package_set:
-                for year in self.package_year:
-                    package_plist = self.loop_feed_locations[pkg_set][year]
-                    for plist in package_plist:
-                        print 'Processing items from %s and saving to %s' % (
-                            plist, self.download_location
-                        )
-                        self.process_plist(year, plist)
+            # loops in your for loops
+            if self.files_process:
+                # This loops through package sets, and checks if we're only
+                # processing from a specific file, if so, just do the tango for
+                # that file.
+                for pkg_set in self.package_set:
+                    for year in self.package_year:
+                        package_plist = self.loop_feed_locations[pkg_set][year]
+                        for plist in self.files_process:
+                            if plist in package_plist:
+                                self.process_plist(year, plist)
+            else:
+                # Here we just loop through all the package sets and do the
+                # tango for everything that is defaulted to.
+                for pkg_set in self.package_set:
+                    for year in self.package_year:
+                        package_plist = self.loop_feed_locations[pkg_set][year]
+                        for plist in package_plist:
+                            self.process_plist(year, plist)
         except (KeyboardInterrupt, SystemExit):
             self.exit_out()
 
@@ -741,44 +757,49 @@ def main():
     args = parser.parse_args()
 
     # Set which package set to download
-    print args
-    if args is None:
-        print 'No arguments here'
+    if args.package_set:
+        pkg_set = args.package_set
     else:
-        print 'Arguments provided'
-#         if args.package_set:
-#             pkg_set = args.package_set
-#         else:
-#             pkg_set = ['garageband']
-# 
-#         # Set output directory
-#         if args.destination and len(args.destination) is 1:
-#             store_in = args.destination[0]
-#         else:
-#             store_in = None
-# 
-#         # Set content year
-#         if not args.content_year:
-#             year = ['2016']
-#         else:
-#             year = args.content_year
-# 
-#         # Set output directory
-#         if args.cache_server and len(args.cache_server) is 1:
-#             cache_server = args.cache_server[0]
-#         else:
-#             cache_server = None
-# 
-#         # Instantiate the class AppleLoops with options
-#         loops = AppleLoops(download_location=store_in,
-#                            dry_run=args.dry_run,
-#                            package_set=pkg_set,
-#                            package_year=year,
-#                            mandatory_pkg=args.mandatory,
-#                            optional_pkg=args.optional,
-#                            caching_server=cache_server)
-# 
-#         loops.main_processor()
+        if args.plist_file:
+            pkg_set = ['garageband', 'logicpro', 'mainstage']
+        else:
+            pkg_set = ['garageband']
+
+    # Set output directory
+    if args.destination and len(args.destination) is 1:
+        store_in = args.destination[0]
+    else:
+        store_in = None
+
+    # Set content year
+    if not args.content_year:
+        year = ['2016']
+    else:
+        year = args.content_year
+
+    # Set output directory
+    if args.cache_server and len(args.cache_server) is 1:
+        cache_server = args.cache_server[0]
+    else:
+        cache_server = None
+
+    # File process
+    if args.plist_file:
+        files_to_process = args.plist_file
+    else:
+        files_to_process = None
+
+    # Instantiate the class AppleLoops with options
+    loops = AppleLoops(download_location=store_in,
+                       dry_run=args.dry_run,
+                       package_set=pkg_set,
+                       package_year=year,
+                       mandatory_pkg=args.mandatory,
+                       optional_pkg=args.optional,
+                       caching_server=cache_server,
+                       files_process=files_to_process)
+
+    loops.main_processor()
 
 if __name__ == '__main__':
     try:
