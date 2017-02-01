@@ -174,7 +174,8 @@ class AppleLoops():
                                                         'pkg_mandatory',
                                                         'pkg_size',
                                                         'pkg_year',
-                                                        'pkg_loop_for'])
+                                                        'pkg_loop_for',
+                                                        'pkg_plist'])
 
             # Empty list to put all the content that we're going to work on
             # into.
@@ -219,7 +220,8 @@ class AppleLoops():
             self.exit_out()
 
     def add_loop(self, package_name, package_url,
-                 package_mandatory, package_size, package_year, loop_for):
+                 package_mandatory, package_size,
+                 package_year, loop_for, plist):
         """Add's the loop to the master list. A named tuple is used to make
         referencing attributes of each loop easier."""
         try:
@@ -237,7 +239,8 @@ class AppleLoops():
                 pkg_mandatory=package_mandatory,
                 pkg_size=package_size,
                 pkg_year=package_year,
-                pkg_loop_for=loop_for
+                pkg_loop_for=loop_for,
+                pkg_plist=plist
             )
 
             if loop not in self.master_list:
@@ -258,6 +261,9 @@ class AppleLoops():
             # 'Content-Length' to determine correct package size.
             plist_url = self.build_url(loop_year, plist)
 
+            # Split extension from the plist for folder creation
+            _plist = os.path.splitext(plist)[0]
+
             # URL requests
             request = self.request_url(plist_url)
 
@@ -266,8 +272,8 @@ class AppleLoops():
             loop_for = os.path.splitext(plist)[0]
 
             # I don't like using regex, so here's a lambda to remove numbers
-            # numbers part of the loop URL to use as an indicator for what app
-            # app the loop is for
+            # part of the loop URL to use as an indicator for what app
+            # the loop is for
             loop_for = ''.join(map(lambda c: '' if c in '0123456789' else c,
                                    loop_for))
 
@@ -307,16 +313,17 @@ class AppleLoops():
                 if self.mandatory_pkg and not self.optional_pkg:
                     if mandatory:
                         self.add_loop(name, url, mandatory, size, year,
-                                      loop_for)
+                                      loop_for, _plist)
                 elif self.optional_pkg and not self.mandatory_pkg:
                     if not mandatory:
                         self.add_loop(name, url, mandatory, size, year,
-                                      loop_for)
+                                      loop_for, _plist)
                 else:
                     pass
 
                 if not self.mandatory_pkg and not self.optional_pkg:
-                    self.add_loop(name, url, mandatory, size, year, loop_for)
+                    self.add_loop(name, url, mandatory, size, year, loop_for,
+                                  _plist)
 
             # Tidy up the urllib2 request
             request.close()
@@ -490,16 +497,18 @@ class AppleLoops():
     def local_directory(self, loop):
         """Just a quick test to see if the loop is optional or mandatory, and
         return the correct path for either type."""
+        directory_path = (
+            os.path.join(
+                self.download_location,
+                loop.pkg_plist,  # Trying a different approach to loops
+                # loop.pkg_loop_for,
+                loop.pkg_year,
+            )
+        )
         if loop.pkg_mandatory:
-            return os.path.join(self.download_location,
-                                loop.pkg_loop_for,
-                                loop.pkg_year,
-                                'mandatory')
+            return os.path.join(directory_path, 'mandatory')
         else:
-            return os.path.join(self.download_location,
-                                loop.pkg_loop_for,
-                                loop.pkg_year,
-                                'optional')
+            return os.path.join(directory_path, 'optional')
 
     # Downloads the loop file
     def download(self, loop, counter):
@@ -567,9 +576,9 @@ class AppleLoops():
                         except:
                             pass
                         else:
-                            # Let a random sleep of 1-5 seconds happen between
+                            # Let a random sleep of 1-2 seconds happen between
                             # each download
-                            pause = uniform(1, 5)
+                            pause = uniform(1, 2)
                             sleep(pause)
                 else:
                     print 'Skipped %s of %s: %s - file exists' % (
@@ -577,8 +586,9 @@ class AppleLoops():
                     )
             else:
                 if not self.file_exists(loop, local_file):
-                    print 'Download: %s - %s' % (
-                        loop.pkg_name, self.convert_size(float(loop.pkg_size))
+                    print 'Download: %s - %s (%s)' % (
+                        loop.pkg_name, self.convert_size(float(loop.pkg_size)),
+                        loop.pkg_plist
                     )
                     self.download_amount.append(float(loop.pkg_size))
                 else:
