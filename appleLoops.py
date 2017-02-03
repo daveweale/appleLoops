@@ -44,12 +44,12 @@ from Foundation import NSPropertyListXMLFormat_v1_0  # NOQA
 __author__ = 'Carl Windus'
 __copyright__ = 'Copyright 2016, Carl Windus'
 __credits__ = ['Greg Neagle', 'Matt Wilkie']
-__version__ = '1.1.0'
-__date__ = '2016-12-23'
+__version__ = '1.1.1'
+__date__ = '2017-02-02'
 
 __license__ = 'Apache License, Version 2.0'
 __maintainer__ = 'Carl Windus: https://github.com/carlashley/appleLoops'
-__status__ = 'Testing'
+__status__ = 'Production'
 
 
 # Acknowledgements to Greg Neagle and `munki` for this section of code.
@@ -89,7 +89,7 @@ class AppleLoops():
     def __init__(self, download_location=None, dry_run=True,
                  package_set=None, package_year=None,
                  mandatory_pkg=False, optional_pkg=False,
-                 caching_server=None, files_process=None):
+                 caching_server=None, files_process=None, jss_mode=False):
         try:
             if not download_location:
                 self.download_location = os.path.join('/tmp', 'appleLoops')
@@ -135,6 +135,13 @@ class AppleLoops():
                 self.files_process = files_process
             else:
                 self.files_process = False
+
+            # Switch JSS mode on or off (modifies output in the console to not
+            # include the percentage completed)
+            if jss_mode:
+                self.jss_mode = True
+            else:
+                self.jss_mode = False
 
             # User-Agent string for this tool
             self.user_agent = 'appleLoops/%s' % __version__
@@ -253,9 +260,14 @@ class AppleLoops():
         as python's native plistlib module doesn't read binary plists, which
         Apple has used in past releases."""
         try:
-            print 'Processing items from %s and saving to %s' % (
-                                plist, self.download_location
-                            )
+            if self.jss_mode:
+                _jss_mode = 'on'
+            else:
+                _jss_mode = 'off'
+
+            print 'Processing items from %s and saving to %s. JSS mode %s' % (
+                            plist, self.download_location, _jss_mode
+                        )
             # Note - the package size specified in the plist feeds doesn't
             # always match the actual package size, so check header
             # 'Content-Length' to determine correct package size.
@@ -540,7 +552,8 @@ class AppleLoops():
                         while True:
                             buffer = request.read(8192)
                             if not buffer:
-                                print('')
+                                if not self.jss_mode:
+                                    print('')
                                 break
 
                             # Re-calculate downloaded bytes
@@ -565,10 +578,11 @@ class AppleLoops():
                             # Output progress made
                             items_count = '%s of %s' % (counter,
                                                         len(self.master_list))
-                            self.progress_output(loop, percent,
-                                                 self.convert_size(float(
-                                                     loop.pkg_size)),
-                                                 items_count)
+                            if not self.jss_mode:
+                                self.progress_output(loop, percent,
+                                                     self.convert_size(float(
+                                                         loop.pkg_size)),
+                                                     items_count)
                     finally:
                         try:
                             request.close()
@@ -586,9 +600,8 @@ class AppleLoops():
                     )
             else:
                 if not self.file_exists(loop, local_file):
-                    print 'Download: %s - %s (%s)' % (
-                        loop.pkg_name, self.convert_size(float(loop.pkg_size)),
-                        loop.pkg_plist
+                    print 'Download: %s - %s' % (
+                        loop.pkg_name, self.convert_size(float(loop.pkg_size))
                     )
                     self.download_amount.append(float(loop.pkg_size))
                 else:
@@ -612,6 +625,11 @@ class AppleLoops():
                 if self.duplicate_file(loop):
                     self.copy_duplicate(loop, counter)
                 else:
+                    if self.jss_mode:
+                        print 'Downloading %s of %s: %s - %s' % (
+                            counter, len(self.master_list), loop.pkg_name,
+                            self.convert_size(float(loop.pkg_size))
+                        )
                     self.download(loop, counter)
                     download_counter += 1
                 counter += 1
@@ -715,6 +733,16 @@ def main():
         help='Specify one or more files to process loops from',
         required=False
     )
+
+    # Option for JSS special mode
+    parser.add_argument(
+        '-j', '--jss',
+        action='store_true',
+        dest='jss_quiet_output',
+        help='Minimal output to reduce spamming the JSS console',
+        required=False
+    )
+
     # Option for mandatory content only
     exclusive_group.add_argument(
         '-m', '--mandatory-only',
@@ -799,6 +827,12 @@ def main():
     else:
         files_to_process = None
 
+    # Suppressed mode for JSS output
+    if args.jss_quiet_output:
+        jss_output_mode = True
+    else:
+        jss_output_mode = False
+
     # Instantiate the class AppleLoops with options
     loops = AppleLoops(download_location=store_in,
                        dry_run=args.dry_run,
@@ -807,7 +841,8 @@ def main():
                        mandatory_pkg=args.mandatory,
                        optional_pkg=args.optional,
                        caching_server=cache_server,
-                       files_process=files_to_process)
+                       files_process=files_to_process,
+                       jss_mode=jss_output_mode)
 
     loops.main_processor()
 
