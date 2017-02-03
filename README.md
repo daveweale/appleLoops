@@ -32,7 +32,7 @@ The current version of MainStage 3 (3.2.4 as at 2016-11-23):
 All three apps do have a number of packages that are shared in common, both in the essential package sets, and optional package sets.
 
 ## Usage
-* `git clone https://github.com/jcitizen/appleLoops`
+* `git clone https://github.com/carlashley/appleLoops`
 * `./appleLoops.py --help` for usage
 
 ### Quick usage examples
