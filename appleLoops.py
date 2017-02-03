@@ -44,12 +44,12 @@ from Foundation import NSPropertyListXMLFormat_v1_0  # NOQA
 __author__ = 'Carl Windus'
 __copyright__ = 'Copyright 2016, Carl Windus'
 __credits__ = ['Greg Neagle', 'Matt Wilkie']
-__version__ = '1.1.0'
-__date__ = '2016-12-23'
+__version__ = '1.1.1'
+__date__ = '2017-02-02'
 
 __license__ = 'Apache License, Version 2.0'
 __maintainer__ = 'Carl Windus: https://github.com/carlashley/appleLoops'
-__status__ = 'Testing'
+__status__ = 'Production'
 
 
 # Acknowledgements to Greg Neagle and `munki` for this section of code.
@@ -88,7 +88,8 @@ class AppleLoops():
     and Logic Pro, as well as downloading loops content."""
     def __init__(self, download_location=None, dry_run=True,
                  package_set=None, package_year=None,
-                 mandatory_pkg=False, optional_pkg=False, caching_server=None):
+                 mandatory_pkg=False, optional_pkg=False,
+                 caching_server=None, files_process=None, jss_mode=False):
         try:
             if not download_location:
                 self.download_location = os.path.join('/tmp', 'appleLoops')
@@ -129,6 +130,19 @@ class AppleLoops():
             else:
                 self.caching_server = None
 
+            # Processing specific files or not
+            if files_process:
+                self.files_process = files_process
+            else:
+                self.files_process = False
+
+            # Switch JSS mode on or off (modifies output in the console to not
+            # include the percentage completed)
+            if jss_mode:
+                self.jss_mode = True
+            else:
+                self.jss_mode = False
+
             # User-Agent string for this tool
             self.user_agent = 'appleLoops/%s' % __version__
 
@@ -141,6 +155,17 @@ class AppleLoops():
             self.config = readPlistFromString(self.feeds.read())
             self.loop_feed_locations = self.config['loop_feeds']
             self.loop_years = self.config['loop_years']
+
+            self.file_choices = []
+            # Seriously inelegant, but it works :shrug:
+            for year in self.config['loop_years']:
+                for app_feed in self.config['loop_feeds']:
+                    for plist in self.loop_feed_locations[app_feed][year]:
+                        # This builds the choices list for the argparse further
+                        # down
+                        if plist not in self.file_choices:
+                            self.file_choices.append(str(plist))
+
             self.feeds.close()
 
             # Create a named tuple for our loops master list
@@ -156,7 +181,8 @@ class AppleLoops():
                                                         'pkg_mandatory',
                                                         'pkg_size',
                                                         'pkg_year',
-                                                        'pkg_loop_for'])
+                                                        'pkg_loop_for',
+                                                        'pkg_plist'])
 
             # Empty list to put all the content that we're going to work on
             # into.
@@ -201,7 +227,8 @@ class AppleLoops():
             self.exit_out()
 
     def add_loop(self, package_name, package_url,
-                 package_mandatory, package_size, package_year, loop_for):
+                 package_mandatory, package_size,
+                 package_year, loop_for, plist):
         """Add's the loop to the master list. A named tuple is used to make
         referencing attributes of each loop easier."""
         try:
@@ -219,7 +246,8 @@ class AppleLoops():
                 pkg_mandatory=package_mandatory,
                 pkg_size=package_size,
                 pkg_year=package_year,
-                pkg_loop_for=loop_for
+                pkg_loop_for=loop_for,
+                pkg_plist=plist
             )
 
             if loop not in self.master_list:
@@ -232,10 +260,21 @@ class AppleLoops():
         as python's native plistlib module doesn't read binary plists, which
         Apple has used in past releases."""
         try:
+            if self.jss_mode:
+                _jss_mode = 'on'
+            else:
+                _jss_mode = 'off'
+
+            print 'Processing items from %s and saving to %s. JSS mode %s' % (
+                            plist, self.download_location, _jss_mode
+                        )
             # Note - the package size specified in the plist feeds doesn't
             # always match the actual package size, so check header
             # 'Content-Length' to determine correct package size.
             plist_url = self.build_url(loop_year, plist)
+
+            # Split extension from the plist for folder creation
+            _plist = os.path.splitext(plist)[0]
 
             # URL requests
             request = self.request_url(plist_url)
@@ -245,8 +284,8 @@ class AppleLoops():
             loop_for = os.path.splitext(plist)[0]
 
             # I don't like using regex, so here's a lambda to remove numbers
-            # numbers part of the loop URL to use as an indicator for what app
-            # app the loop is for
+            # part of the loop URL to use as an indicator for what app
+            # the loop is for
             loop_for = ''.join(map(lambda c: '' if c in '0123456789' else c,
                                    loop_for))
 
@@ -286,16 +325,17 @@ class AppleLoops():
                 if self.mandatory_pkg and not self.optional_pkg:
                     if mandatory:
                         self.add_loop(name, url, mandatory, size, year,
-                                      loop_for)
+                                      loop_for, _plist)
                 elif self.optional_pkg and not self.mandatory_pkg:
                     if not mandatory:
                         self.add_loop(name, url, mandatory, size, year,
-                                      loop_for)
+                                      loop_for, _plist)
                 else:
                     pass
 
                 if not self.mandatory_pkg and not self.optional_pkg:
-                    self.add_loop(name, url, mandatory, size, year, loop_for)
+                    self.add_loop(name, url, mandatory, size, year, loop_for,
+                                  _plist)
 
             # Tidy up the urllib2 request
             request.close()
@@ -306,17 +346,29 @@ class AppleLoops():
         """This builds the master list of audio content so it (the master list)
         can be processed in other functions. Yeah, there's some funky Big O
         here."""
+
+        # This is where we'll check if we're processing a specific file or not
         try:
             # Yo dawg, heard you like for loops, so I put for loops in your for
-            # loops
-            for pkg_set in self.package_set:
-                for year in self.package_year:
-                    package_plist = self.loop_feed_locations[pkg_set][year]
-                    for plist in package_plist:
-                        print 'Processing items from %s and saving to %s' % (
-                            plist, self.download_location
-                        )
-                        self.process_plist(year, plist)
+            # loops in your for loops
+            if self.files_process:
+                # This loops through package sets, and checks if we're only
+                # processing from a specific file, if so, just do the tango for
+                # that file.
+                for pkg_set in self.package_set:
+                    for year in self.package_year:
+                        package_plist = self.loop_feed_locations[pkg_set][year]
+                        for plist in self.files_process:
+                            if plist in package_plist:
+                                self.process_plist(year, plist)
+            else:
+                # Here we just loop through all the package sets and do the
+                # tango for everything that is defaulted to.
+                for pkg_set in self.package_set:
+                    for year in self.package_year:
+                        package_plist = self.loop_feed_locations[pkg_set][year]
+                        for plist in package_plist:
+                            self.process_plist(year, plist)
         except (KeyboardInterrupt, SystemExit):
             self.exit_out()
 
@@ -457,16 +509,18 @@ class AppleLoops():
     def local_directory(self, loop):
         """Just a quick test to see if the loop is optional or mandatory, and
         return the correct path for either type."""
+        directory_path = (
+            os.path.join(
+                self.download_location,
+                loop.pkg_plist,  # Trying a different approach to loops
+                # loop.pkg_loop_for,
+                loop.pkg_year,
+            )
+        )
         if loop.pkg_mandatory:
-            return os.path.join(self.download_location,
-                                loop.pkg_loop_for,
-                                loop.pkg_year,
-                                'mandatory')
+            return os.path.join(directory_path, 'mandatory')
         else:
-            return os.path.join(self.download_location,
-                                loop.pkg_loop_for,
-                                loop.pkg_year,
-                                'optional')
+            return os.path.join(directory_path, 'optional')
 
     # Downloads the loop file
     def download(self, loop, counter):
@@ -498,7 +552,8 @@ class AppleLoops():
                         while True:
                             buffer = request.read(8192)
                             if not buffer:
-                                print('')
+                                if not self.jss_mode:
+                                    print('')
                                 break
 
                             # Re-calculate downloaded bytes
@@ -523,10 +578,11 @@ class AppleLoops():
                             # Output progress made
                             items_count = '%s of %s' % (counter,
                                                         len(self.master_list))
-                            self.progress_output(loop, percent,
-                                                 self.convert_size(float(
-                                                     loop.pkg_size)),
-                                                 items_count)
+                            if not self.jss_mode:
+                                self.progress_output(loop, percent,
+                                                     self.convert_size(float(
+                                                         loop.pkg_size)),
+                                                     items_count)
                     finally:
                         try:
                             request.close()
@@ -534,9 +590,9 @@ class AppleLoops():
                         except:
                             pass
                         else:
-                            # Let a random sleep of 1-5 seconds happen between
+                            # Let a random sleep of 1-2 seconds happen between
                             # each download
-                            pause = uniform(1, 5)
+                            pause = uniform(1, 2)
                             sleep(pause)
                 else:
                     print 'Skipped %s of %s: %s - file exists' % (
@@ -569,6 +625,11 @@ class AppleLoops():
                 if self.duplicate_file(loop):
                     self.copy_duplicate(loop, counter)
                 else:
+                    if self.jss_mode:
+                        print 'Downloading %s of %s: %s - %s' % (
+                            counter, len(self.master_list), loop.pkg_name,
+                            self.convert_size(float(loop.pkg_size))
+                        )
                     self.download(loop, counter)
                     download_counter += 1
                 counter += 1
@@ -605,6 +666,7 @@ def main():
         Code used was from Matt Wilkie.
         http://stackoverflow.com/questions/9642692/argparse-help-without-duplicate-allcaps/9643162#9643162
         """
+
         def _format_action_invocation(self, action):
             if not action.option_strings:
                 default = self._get_default_metavar_for_positional(action)
@@ -648,23 +710,36 @@ def main():
         required=False
     )
 
-    # Option for package set (either 'garageband' or 'logicpro')
+    # Option for output directory
     parser.add_argument(
-        '-p', '--package-set',
+        '-d', '--destination',
         type=str,
-        nargs='+',
-        dest='package_set',
-        choices=['garageband', 'logicpro', 'mainstage'],
-        help='Specify one or more package set to download',
+        nargs=1,
+        dest='destination',
+        metavar='<folder>',
+        help='Download location for loops content',
         required=False
     )
 
-    # Option for dry run
+    # Option for parsing a particular file
     parser.add_argument(
-        '-n', '--dry-run',
+        '-f', '--file',
+        type=str,
+        nargs='+',
+        dest='plist_file',
+        choices=(AppleLoops().file_choices),
+        # choices=['foo'],
+        # metavar='<file>',
+        help='Specify one or more files to process loops from',
+        required=False
+    )
+
+    # Option for JSS special mode
+    parser.add_argument(
+        '-j', '--jss',
         action='store_true',
-        dest='dry_run',
-        help='Dry run to indicate what will be downloaded',
+        dest='jss_quiet_output',
+        help='Minimal output to reduce spamming the JSS console',
         required=False
     )
 
@@ -677,6 +752,15 @@ def main():
         required=False
     )
 
+    # Option for dry run
+    parser.add_argument(
+        '-n', '--dry-run',
+        action='store_true',
+        dest='dry_run',
+        help='Dry run to indicate what will be downloaded',
+        required=False
+    )
+
     # Option for optional content only
     exclusive_group.add_argument(
         '-o', '--optional-only',
@@ -686,14 +770,14 @@ def main():
         required=False
     )
 
-    # Option for output directory
+    # Option for package set (either 'garageband' or 'logicpro')
     parser.add_argument(
-        '-d', '--destination',
+        '-p', '--package-set',
         type=str,
-        nargs=1,
-        dest='destination',
-        metavar='<folder>',
-        help='Download location for loops content',
+        nargs='+',
+        dest='package_set',
+        choices=['garageband', 'logicpro', 'mainstage'],
+        help='Specify one or more package set to download',
         required=False
     )
 
@@ -714,7 +798,10 @@ def main():
     if args.package_set:
         pkg_set = args.package_set
     else:
-        pkg_set = ['garageband']
+        if args.plist_file:
+            pkg_set = ['garageband', 'logicpro', 'mainstage']
+        else:
+            pkg_set = ['garageband']
 
     # Set output directory
     if args.destination and len(args.destination) is 1:
@@ -734,6 +821,18 @@ def main():
     else:
         cache_server = None
 
+    # File process
+    if args.plist_file:
+        files_to_process = args.plist_file
+    else:
+        files_to_process = None
+
+    # Suppressed mode for JSS output
+    if args.jss_quiet_output:
+        jss_output_mode = True
+    else:
+        jss_output_mode = False
+
     # Instantiate the class AppleLoops with options
     loops = AppleLoops(download_location=store_in,
                        dry_run=args.dry_run,
@@ -741,7 +840,9 @@ def main():
                        package_year=year,
                        mandatory_pkg=args.mandatory,
                        optional_pkg=args.optional,
-                       caching_server=cache_server)
+                       caching_server=cache_server,
+                       files_process=files_to_process,
+                       jss_mode=jss_output_mode)
 
     loops.main_processor()
 
