@@ -11,6 +11,7 @@
 				<string>garageband1016.plist</string>
 				<string>garageband1015.plist</string>
 				<string>garageband1012.plist</string>
+				<string>garageband1011.plist</string>
 			</array>
 		</dict>
 		<key>logicpro</key>
@@ -19,6 +20,7 @@
 			<array>
 				<string>logicpro1030.plist</string>
 				<string>logicpro1023.plist</string>
+				<string>logicpro1022.plist</string>
 			</array>
 		</dict>
 		<key>mainstage</key>
