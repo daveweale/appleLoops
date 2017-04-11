@@ -27,6 +27,7 @@
 		<dict>
 			<key>2016</key>
 			<array>
+				<string>mainstage330.plist</string>
 				<string>mainstage324.plist</string>
 			</array>
 		</dict>
